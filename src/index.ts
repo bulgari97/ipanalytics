@@ -2,7 +2,6 @@ import express, { Request, Response } from "express";
 import CheckIP from "./lib/CheckIP";
 
 
-
 // Testing 
 const app = express();
 const PORT = 3000;
@@ -15,7 +14,7 @@ const newChecker = new CheckIP({
 })
 
 app.use("/", (req: Request, res: Response) => {
-  newChecker.logVisit(req)
+  newChecker.logVisit(req, res)
 });
 
 app.listen(PORT, () => {

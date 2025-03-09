@@ -6,7 +6,7 @@ class LogData extends Redis {
     super();
   };
 
-  async getIPs(key: keyIPs, start: number, stop: number): Promise<IReturnedArray[]> {
+  async getIPs(key: keyIPs, start: number, stop: number): Promise<IReturnedIPs[]> {
     try {
       const valuesByKey: IValuesByKey[] = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
@@ -42,7 +42,7 @@ class LogData extends Redis {
     }
   };
 
-  async getUAs(key: keyUAs, start: number, stop: number) {
+  async getUAs(key: keyUAs, start: number, stop: number): Promise<IReturnedUAs[]> {
     try {
       const valuesByKey: IValuesByKey[] = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
@@ -51,10 +51,10 @@ class LogData extends Redis {
       };
 
       return await Promise.all(
-        valuesByKey.map(async ({ value: UA, score }) => {
-          const ips: string[] = await this.client.sMembers(`UserAgent:${UA}`)
+        valuesByKey.map(async ({ value: ua, score }) => {
+          const ips: string[] = await this.client.sMembers(`UserAgent:${ua}`)
               
-          return { UA, ips, score };
+          return { ua, ips, score };
         })
       );
     } catch (error: unknown) {
@@ -66,12 +66,25 @@ class LogData extends Redis {
       return [];
     }
   };
+  
+  async getBanned (key: keyBANNED, start: number, stop: number): Promise<IValuesByKey[]> {
+    try {
+      const bannedIPs = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
-
-  // getBannedIPs
-
-
-  // getBannedUAs
-}
+      if (bannedIPs.length === 0) {
+        return [];
+      };
+      
+      return bannedIPs.map(({ value, score }) => ({ value, score }));
+    } catch (error) {
+      this.pino.log({
+        level: LogLevel.ERROR,
+        method: "getBanned",
+        error: error
+      });
+      return [];
+    }
+  };
+};
 
 export default LogData;

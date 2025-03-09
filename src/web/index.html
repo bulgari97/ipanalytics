@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Layout</title>
+    <style>
+    </style>
+</head>
+<body>
+    <div class="buttons">
+        <button onclick="getIPsByLastVisit('ips_by_time')">Sort by IPs</button>
+        <button>Sort by UAS</button>
+        <button>NOT BUNNED</button>
+        <button>BUNNED</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ip</th>
+                <th>user agent</th>
+                <th>urls</th>
+                <th>last visit</th>
+            </tr>
+        </thead>
+        <tbody id="tbody">
+        </tbody>
+    </table>
+</body>
+</html>

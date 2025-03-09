@@ -1,56 +1,35 @@
 import Redis from "../utils/redis";
 
 class RedisLogger extends Redis {
-  private ttlLOG;
-  private ttlBAN;
+  private static ttlLOG: number = 86400;
+  private static ttlBAN: number = 86400 * 7;
 
-  private static readonly DEFAULT_TTL_LOG = 86400;
-  private static readonly DEFAULT_TTL_BAN = 86400 * 7;
+  private ttlLOG: number;
+  private ttlBAN: number;
+
+  private static instance: RedisLogger;
+
+  static config(ttlLOG?: number, ttlBAN?: number) {
+    if (ttlLOG) RedisLogger.ttlLOG = ttlLOG;
+    if (ttlBAN) RedisLogger.ttlBAN = ttlBAN;
+  }
+
+  static getInstance(): RedisLogger {
+    if (!RedisLogger.instance) {
+      RedisLogger.instance = new RedisLogger();
+    }
+    return RedisLogger.instance;
+  }
 
   constructor(
-    ttlLOG?: number,
-    ttlBAN?: number
   ) {
     super();
-    this.ttlLOG = ttlLOG ?? RedisLogger.DEFAULT_TTL_LOG;
-    this.ttlBAN = ttlBAN ?? RedisLogger.DEFAULT_TTL_BAN;
+    this.ttlLOG = RedisLogger.ttlLOG;
+    this.ttlBAN = RedisLogger.ttlBAN;
   }
 
   async logVisit(ip: string, userAgent: string, url: string): Promise<void> {
     try {
-      if (!ip?.trim()) {
-        this.pino.log({
-          level: LogLevel.WARN,
-          method: "logVisit",
-          message: "IP is missing"
-        });
-        return;
-      }
-
-      if (!userAgent) {
-        this.pino.log({
-          level: LogLevel.WARN,
-          method: "logVisit",
-          message: "UserAgent is missing"
-        });
-        return;
-      }
-
-      const [bannedByUA, bannedByIP] = await Promise.all([
-        this.isBannedByUA(userAgent),
-        this.isBannedByIP(ip)
-      ]);
-
-      // НУЖНО СДЕЛАТЬ ПРОКИДЫВАНИЕ СТРАНИЦЫ С ИНФОРМАЦИЕЙ О БАНЕ. ЧТОБЫ ДАЛЬШЕ НЕ ПОШЛО
-      if (bannedByUA || bannedByIP) {
-        this.pino.log({
-          level: LogLevel.WARN,
-          method: "logVisit",
-          message: `Blocked visit from ${ip} / ${userAgent}`
-        });
-        return;
-      }
-
       const lastVisit = Date.now();
       const multi = this.client.multi();
 
@@ -63,10 +42,7 @@ class RedisLogger extends Redis {
 
       // this need for sort in LogData
       multi.zAdd("ips_by_time", { score: lastVisit, value: ip }); // sort by visits
-      multi.zRemRangeByScore("ips_by_time", 0, Date.now() - this.ttlLOG * 1000);
-
       multi.zIncrBy("active_ips", 1, ip); // sort by activity
-      multi.zRemRangeByScore("active_ips", 0, Date.now() - this.ttlLOG * 1000);
 
       // if this is new client userAgent or new ip - create
       multi.sAdd("UserAgents", userAgent);
@@ -77,10 +53,7 @@ class RedisLogger extends Redis {
 
       // this need for sort in LogData
       multi.zAdd("uas_by_time", { score: lastVisit, value: userAgent }); // sort by visits
-      multi.zRemRangeByScore("uas_by_time", 0, Date.now() - this.ttlLOG * 1000);
-
       multi.zIncrBy("active_uas", 1, userAgent); // sort by activity
-      multi.zRemRangeByScore("active_uas", 0, Date.now() - this.ttlLOG * 1000);
 
       await multi.exec(); 
     } catch (error: unknown) {
@@ -218,7 +191,7 @@ class RedisLogger extends Redis {
   }
 
   // check by ban
-  private async isBannedByIP(ip: string): Promise<boolean> {
+  async isBannedByIP(ip: string): Promise<boolean> {
     try {
       if (!ip?.trim()) {
         this.pino.log({
@@ -230,6 +203,9 @@ class RedisLogger extends Redis {
       }
 
       const now = Date.now();
+
+      await this.client.zRemRangeByScore("banned_ips", 0, now);
+
       const score = await this.client.zScore("banned_ips", ip);
         
       return score !== null && score > now;
@@ -243,7 +219,7 @@ class RedisLogger extends Redis {
     }
   }
 
-  private async isBannedByUA(ua: string): Promise<boolean> {
+  async isBannedByUA(ua: string): Promise<boolean> {
     try {
       if (!ua) {
         this.pino.log({
@@ -255,6 +231,9 @@ class RedisLogger extends Redis {
       }
 
       const now = Date.now();
+
+      await this.client.zRemRangeByScore("banned_uas", 0, now);
+
       const score = await this.client.zScore("banned_uas", ua);
         
       return score !== null && score > now;
