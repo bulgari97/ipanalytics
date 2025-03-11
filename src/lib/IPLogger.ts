@@ -1,18 +1,18 @@
 import Redis from "../utils/redis";
 import RedisLogger from "./RedisLogger";
-import express, { Request, Response } from "express";
 import { promises as fs } from "fs";
 import { join } from "path";
 import Server from "./Server";
+import { FastifyReply, FastifyRequest } from "fastify";
 
-class CheckIP extends Redis {
+class IPLogger extends Redis {
   redisLogger;
   server;
   ttlLOG;
   ttlBAN;
   private userBannedPage;
  
-  constructor(config?: { user?: string; password?: string; port?: number; host?: string }, settings?: { bannedPage?: string, ttlLOG?: number, ttlBAN?: number, port?: number }) {
+  constructor(config?: { port?: number; host?: string }, settings?: { bannedPage?: string, ttlLOG?: number, ttlBAN?: number, port?: number }) {
     super(config);
     this.ttlLOG = settings?.ttlLOG;
     this.ttlBAN = settings?.ttlBAN;
@@ -24,14 +24,13 @@ class CheckIP extends Redis {
     this.server = new Server(settings?.port)
   }
 
-  // !!!!!!!!  ПЕРЕПИШИ ИСПОЛЬЗУЕМ FASTIFY ВМЕСТО EXPRESS  !!!!!!!!!!!!!!!!!!
-  async logVisit (req: Request, res: Response) {
+  async logVisit (req: FastifyRequest, res: FastifyReply) {
     try {
       const userAgent = req.headers["user-agent"] || "Unknown";
       const ip =
         req.ip ||
         (req.headers["x-forwarded-for"] as string) ||
-        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
         "0.0.0.0";
   
       const url = req.url
@@ -90,4 +89,4 @@ class CheckIP extends Redis {
   }
 }
 
-export default CheckIP;
+export default IPLogger;

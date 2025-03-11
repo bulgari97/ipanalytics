@@ -1,18 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Table Layout</title>
+    <title>Лог Ботов</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        .top-buttons, .bottom-buttons {
+            margin-bottom: 10px;
+        }
+        .top-buttons button, .bottom-buttons button {
+            background: #ccc;
+            border: none;
+            padding: 10px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #f4f4f4;
+        }
+        
     </style>
 </head>
 <body>
-    <div class="buttons">
-        <button onclick="getIPsByLastVisit('ips_by_time')">Sort by IPs</button>
-        <button>Sort by UAS</button>
-        <button>NOT BUNNED</button>
-        <button>BUNNED</button>
+    <div class="top-buttons">
+        <button>IPs</button>
+        <button>User Agents</button>
+    </div>
+    <div class="bottom-buttons">
+        <button>Sort by last visit</button>
+        <button>Sort by activity</button>
+        <button>Ban list</button>
     </div>
     <table>
         <thead>
@@ -23,8 +55,7 @@
                 <th>last visit</th>
             </tr>
         </thead>
-        <tbody id="tbody">
-        </tbody>
+        <tbody id="tbody"></tbody>
     </table>
 </body>
 </html>

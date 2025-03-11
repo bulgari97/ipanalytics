@@ -3,26 +3,20 @@ import PinoLogger from "./pino";
 
 
 class Redis {
-  protected user: string;
-  protected password: string;
   protected port: number;
   protected host: string;
   protected client: RedisClientType;
   protected pino: PinoLogger;
 
-  private static readonly DEFAULT_USER = "default";
-  private static readonly DEFAULT_PASSWORD = "";
   private static readonly DEFAULT_HOST = "localhost";
-  private static readonly DEFAULT_PORT = 1228;
+  private static readonly DEFAULT_PORT = 6379;
 
 
-  constructor(config?: {user?: string, password?: string, host?: string, port?: number}) {
-    this.user = config?.user ?? Redis.DEFAULT_USER;
-    this.password = config?.password ?? Redis.DEFAULT_PASSWORD;
+  constructor(config?: {host?: string, port?: number}) {
     this.port = config?.port ?? Redis.DEFAULT_PORT;
     this.host = config?.host ?? Redis.DEFAULT_HOST;
     this.client = createClient({
-      url: `redis://${this.user}:${this.password}@${this.host}:${this.port}`
+      url: `redis://${this.host}:${this.port}`
     });
 
     this.pino = PinoLogger.getInstance();

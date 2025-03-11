@@ -1,22 +1,29 @@
-import express, { Request, Response } from "express";
-import CheckIP from "./lib/CheckIP";
+import Fastify, { FastifyRequest, FastifyReply } from "fastify";
+import IPLogger from "./lib/IPLogger";
+
+// Example 
 
 
-// Testing 
-const app = express();
+const app = Fastify();
 const PORT = 3000;
 
-const newChecker = new CheckIP({
-  user: "default",
-  password: "31314",
+const newChecker = new IPLogger({
   host: "localhost",
-  port: 1923
-})
-
-app.use("/", (req: Request, res: Response) => {
-  newChecker.logVisit(req, res)
+  port: 6379
+}, {
+  bannedPage: "<h1>Access Denied</h1>",
+  ttlLOG: 86400, // Store time logs (in seconds)
+  ttlBAN: 604800 // Store ban (in seconds)
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+app.get("/", async (req: FastifyRequest, res: FastifyReply) => {
+  return newChecker.logVisit(req, res);
+});
+
+app.listen({ port: PORT }, (err, address) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+  console.log(`Server running at ${address}`);
 });
