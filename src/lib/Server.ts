@@ -1,12 +1,14 @@
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import LogData from "./LogData";
 import RedisLogger from "./RedisLogger";
+import PinoLogger from "../utils/pino";
 
 class Server {
   private fastify: FastifyInstance;
   private logData: LogData;
   private redisLogger: RedisLogger;
   private port: number;
+  protected pino: PinoLogger;
 
   private static readonly DEFAULT_SERVER_PORT: number = 7649;
 
@@ -15,16 +17,20 @@ class Server {
   constructor(port: number | undefined) {
     this.fastify = Fastify({ logger: true });
     this.logData = new LogData();
-    this.routes();
     this.port = port ?? Server.DEFAULT_SERVER_PORT;
+
+    this.routes();
     this.start(this.port);
 
+    this.pino = PinoLogger.getInstance();
     this.redisLogger = RedisLogger.getInstance();
   }
   
   private routes(): void {
     this.fastify.addHook("onRequest", async (req: FastifyRequest, res: FastifyReply) => {
-      if (!Server.ALLOWED_IPS.includes(req.ip)) { 
+      const clientIP = req.ip === "::1" ? "127.0.0.1" : req.ip;
+
+      if (!Server.ALLOWED_IPS.includes(clientIP)) { 
           return res.status(403).send({ error: "Forbidden" });
       }
     });
@@ -64,14 +70,18 @@ class Server {
     });
   }
 
-  private start(port: number): void {
-    this.fastify.listen({ port }, (err, address) => {
-      if (err) {
-        console.error(err);
-        process.exit(1);
-      }
-      console.log(`Server listening at ${address}`);
-    });
+  private async start (port: number): Promise<void> {
+    try {
+      await this.fastify.listen({ port });
+      console.log(`Server listening at http://localhost:${port}`);
+    } catch (error: unknown) {
+      this.pino.log({
+        level: LogLevel.ERROR,
+        method: "server",
+        message: `Error to connect to fastify server. PORT: ${port}`
+      });
+      process.exit(1);
+    }
   }
 }
 

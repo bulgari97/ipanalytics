@@ -4,28 +4,36 @@ class RedisLogger extends Redis {
   private static ttlLOG: number = 86400;
   private static ttlBAN: number = 86400 * 7;
 
-  private ttlLOG: number;
-  private ttlBAN: number;
+  private static instance: RedisLogger; 
+  private static isConfigured: boolean = false;
 
-  private static instance: RedisLogger;
+  static config(ttlLOG?: number, ttlBAN?: number) { // Config use only in IPLogger
+    if (this.isConfigured) { // if this will be use in other class - return error
+      RedisLogger.getInstance().pino.log({
+        level: LogLevel.ERROR,
+        method: "RedisLogger",
+        message: "is already configured"
+      });
+      return;
+    }
 
-  static config(ttlLOG?: number, ttlBAN?: number) {
     if (ttlLOG) RedisLogger.ttlLOG = ttlLOG;
     if (ttlBAN) RedisLogger.ttlBAN = ttlBAN;
+
+    this.isConfigured = true;
   }
 
-  static getInstance(): RedisLogger {
+  static getInstance(): RedisLogger { // Instance of redis logger
     if (!RedisLogger.instance) {
       RedisLogger.instance = new RedisLogger();
     }
     return RedisLogger.instance;
   }
 
-  constructor(
-  ) {
+  constructor() {
     super();
-    this.ttlLOG = RedisLogger.ttlLOG;
-    this.ttlBAN = RedisLogger.ttlBAN;
+    RedisLogger.ttlLOG = RedisLogger.ttlLOG;
+    RedisLogger.ttlBAN = RedisLogger.ttlBAN;
   }
 
   async logVisit(ip: string, userAgent: string, url: string): Promise<void> {
@@ -35,10 +43,10 @@ class RedisLogger extends Redis {
 
       // create ip
       multi.hSet(`ip:${ip}`, { userAgent, lastVisit });
-      multi.expire(`ip:${ip}`, this.ttlLOG);
+      multi.expire(`ip:${ip}`, RedisLogger.ttlLOG);
 
       multi.sAdd(`urls:${ip}`, url);
-      multi.expire(`urls:${ip}`, this.ttlLOG);
+      multi.expire(`urls:${ip}`, RedisLogger.ttlLOG);
 
       // this need for sort in LogData
       multi.zAdd("ips_by_time", { score: lastVisit, value: ip }); // sort by visits
@@ -46,16 +54,24 @@ class RedisLogger extends Redis {
 
       // if this is new client userAgent or new ip - create
       multi.sAdd("UserAgents", userAgent);
-      multi.expire("UserAgents", this.ttlLOG);
+      multi.expire("UserAgents", RedisLogger.ttlLOG);
       
       multi.sAdd(`UserAgent:${userAgent}`, ip);
-      multi.expire(`UserAgent:${userAgent}`, this.ttlLOG);
+      multi.expire(`UserAgent:${userAgent}`, RedisLogger.ttlLOG);
 
       // this need for sort in LogData
       multi.zAdd("uas_by_time", { score: lastVisit, value: userAgent }); // sort by visits
       multi.zIncrBy("active_uas", 1, userAgent); // sort by activity
 
-      await multi.exec(); 
+      const result = await multi.exec(); 
+
+      if (!result) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "logVisit",
+          message: "Failed to execute Redis transaction"
+        });
+      };
     } catch (error: unknown) {
       this.pino.log({
         level: LogLevel.ERROR,
@@ -68,6 +84,7 @@ class RedisLogger extends Redis {
   // ban logic
   async banIP(ip: string): Promise<void> {
     try {
+      // this method is available only in client. so here there aren`t check for ban
       if (!ip?.trim()) {
         this.pino.log({
           level: LogLevel.WARN,
@@ -88,10 +105,18 @@ class RedisLogger extends Redis {
       multi.zRem("active_ips", ip);
 
       // add to banned list
-      const expireAt = Date.now() + this.ttlBAN * 1000;
+      const expireAt = Date.now() + RedisLogger.ttlBAN * 1000;
       multi.zAdd("banned_ips", { score: expireAt, value: ip });
 
-      await multi.exec();
+      const result = await multi.exec(); 
+
+      if (!result) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "banIP",
+          message: "Failed to execute Redis transaction"
+        });
+      };
     } catch (error: unknown) {
       this.pino.log({
         level: LogLevel.ERROR,
@@ -101,8 +126,10 @@ class RedisLogger extends Redis {
     }
   }
 
+
   async banUA(ua: string): Promise<void> {
     try {
+      // this method is available only in client. so here there aren`t check for ban
       if (!ua) {
         this.pino.log({
           level: LogLevel.WARN,
@@ -127,10 +154,18 @@ class RedisLogger extends Redis {
       multi.zRem("active_uas", ua);
 
       // add to banned list
-      const expireAt = Date.now() + this.ttlBAN * 1000;
+      const expireAt = Date.now() + RedisLogger.ttlBAN * 1000;
       multi.zAdd("banned_uas", { score: expireAt, value: ua });
 
-      await multi.exec();
+      const result = await multi.exec(); 
+
+      if (!result) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "banUA",
+          message: "Failed to execute Redis transaction"
+        });
+      };
     } catch (error: unknown) {
       this.pino.log({
         level: LogLevel.ERROR,
@@ -143,6 +178,7 @@ class RedisLogger extends Redis {
   // unban logic
   async unbanIP(ip: string): Promise<void> {
     try {
+      // this method is available only in client. so here there aren`t check for ban
       if (!ip?.trim()) {
         this.pino.log({
           level: LogLevel.WARN,
@@ -164,6 +200,7 @@ class RedisLogger extends Redis {
 
   async unbanUA(ua: string): Promise<void> {
     try {
+      // this method is available only in client. so here there aren`t check for ban
       if (!ua) {
         this.pino.log({
           level: LogLevel.WARN,

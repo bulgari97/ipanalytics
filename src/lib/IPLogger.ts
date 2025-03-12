@@ -2,29 +2,24 @@ import Redis from "../utils/redis";
 import RedisLogger from "./RedisLogger";
 import { promises as fs } from "fs";
 import { join } from "path";
-import Server from "./Server";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 class IPLogger extends Redis {
-  redisLogger;
-  server;
-  ttlLOG;
-  ttlBAN;
-  private userBannedPage;
+  private redisLogger: RedisLogger;
+  private userBannedPage?: string;
+  private static bannedPageCache: string | null = null;
+  private logBannedRequests?: boolean;
  
-  constructor(config?: { port?: number; host?: string }, settings?: { bannedPage?: string, ttlLOG?: number, ttlBAN?: number, port?: number }) {
+  constructor(config?: { port?: number; host?: string }, settings?: { bannedPage?: string, ttlLOG?: number, ttlBAN?: number, logBannedRequests?: boolean }) {
     super(config);
-    this.ttlLOG = settings?.ttlLOG;
-    this.ttlBAN = settings?.ttlBAN;
     this.userBannedPage = settings?.bannedPage;
+    this.logBannedRequests = settings?.logBannedRequests ?? false;
     
     RedisLogger.config(settings?.ttlLOG, settings?.ttlBAN)
     this.redisLogger = RedisLogger.getInstance();
-
-    this.server = new Server(settings?.port)
   }
 
-  async logVisit (req: FastifyRequest, res: FastifyReply) {
+  async logVisit (req: FastifyRequest, res: FastifyReply): Promise<void> {
     try {
       const userAgent = req.headers["user-agent"] || "Unknown";
       const ip =
@@ -35,20 +30,11 @@ class IPLogger extends Redis {
   
       const url = req.url
 
-      if (!ip?.trim()) {
+      if (!ip?.trim() || !userAgent) {
         this.pino.log({
           level: LogLevel.WARN,
           method: "logVisit",
-          message: "IP is missing"
-        });
-        return;
-      }
-
-      if (!userAgent) {
-        this.pino.log({
-          level: LogLevel.WARN,
-          method: "logVisit",
-          message: "UserAgent is missing"
+          message: "IP or User Agent is missing"
         });
         return;
       }
@@ -59,22 +45,20 @@ class IPLogger extends Redis {
       ]);
 
       if (bannedByUA || bannedByIP) {
-        this.pino.log({
-          level: LogLevel.WARN,
-          method: "logVisit",
-          message: `Blocked visit from ${ip} / ${userAgent}`
-        });
+        if (this.logBannedRequests) {
+          this.pino.log({
+              level: LogLevel.WARN,
+              method: "logVisit",
+              message: `Blocked visit from ${ip} / ${userAgent}`
+          });
+        };
 
-        let bannedPage = this.userBannedPage;
-        if (!bannedPage) {
-          bannedPage = await this.getBannedPage();
-        }
-
-        return res.status(403).send(bannedPage);
+        const bannedPage = this.userBannedPage || (await this.getBannedPage());
+        return res.status(403).header("Content-Type", "text/html").send(bannedPage);
       }
 
-      return this.redisLogger.logVisit(ip, userAgent, url)
-    } catch (error) {
+      await this.redisLogger.logVisit(ip, userAgent, url)
+    } catch (error: unknown) {
       this.pino.log({
         level: LogLevel.ERROR,
         method: "LogVisit",
@@ -84,8 +68,11 @@ class IPLogger extends Redis {
     }
   }
 
-  private async getBannedPage() {
-    return await fs.readFile(join(__dirname, "../web/pages/banned-page.html"), "utf-8");
+  private async getBannedPage(): Promise<string> {
+    if (IPLogger.bannedPageCache) return IPLogger.bannedPageCache;
+
+    IPLogger.bannedPageCache = await fs.readFile(join(__dirname, "../web/pages/banned-page.html"),"utf-8");
+    return IPLogger.bannedPageCache;
   }
 }
 

@@ -10,11 +10,9 @@ class LogData extends Redis {
     try {
       const valuesByKey: IValuesByKey[] = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
-      if (valuesByKey.length === 0) {
-          return [];
-      };
+      if (!valuesByKey.length) return [];
 
-      return await Promise.all(
+      return Promise.all(
         valuesByKey.map(async ({ value: ip }) => {
           const multi = this.client.multi();
               
@@ -46,11 +44,9 @@ class LogData extends Redis {
     try {
       const valuesByKey: IValuesByKey[] = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
-      if (valuesByKey.length === 0) {
-          return [];
-      };
+      if (!valuesByKey.length) return [];
 
-      return await Promise.all(
+      return Promise.all(
         valuesByKey.map(async ({ value: ua, score }) => {
           const ips: string[] = await this.client.sMembers(`UserAgent:${ua}`)
               
@@ -60,7 +56,7 @@ class LogData extends Redis {
     } catch (error: unknown) {
       this.pino.log({
         level: LogLevel.ERROR,
-        method: "getIPs",
+        method: "getUAs",
         error: error
       });
       return [];
@@ -71,9 +67,7 @@ class LogData extends Redis {
     try {
       const bannedIPs = await this.client.zRangeWithScores(key, start, stop, { REV: true });
 
-      if (bannedIPs.length === 0) {
-        return [];
-      };
+      if (!bannedIPs.length) return [];
       
       return bannedIPs.map(({ value, score }) => ({ value, score }));
     } catch (error) {
