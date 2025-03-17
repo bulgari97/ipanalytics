@@ -8,8 +8,8 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "src",
     "module": "CommonJS",
   },
-  "include": ["src"]
+  "include": ["src", "src/web", "src/index.ts", "src/lib/types/lib.types.ts", "src/lib/utils"]
 }

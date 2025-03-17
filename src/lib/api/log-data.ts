@@ -31,11 +31,19 @@ class LogData extends Redis {
         })
       );
     } catch (error: unknown) {
-      this.pino.log({
-        level: LogLevel.ERROR,
-        method: "getIPs",
-        error: error
-      });
+      if (error instanceof Error) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getIPs",
+          error: error
+        })
+      } else {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getIPS",
+          message: "Error with getIPs"
+        });
+      }
       return [];
     }
   };
@@ -54,11 +62,19 @@ class LogData extends Redis {
         })
       );
     } catch (error: unknown) {
-      this.pino.log({
-        level: LogLevel.ERROR,
-        method: "getUAs",
-        error: error
-      });
+      if (error instanceof Error) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getUAs",
+          error: error
+        })
+      } else {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getUAs",
+          message: "Error with getUAs"
+        });
+      }
       return [];
     }
   };
@@ -71,11 +87,19 @@ class LogData extends Redis {
       
       return bannedIPs.map(({ value, score }) => ({ value, score }));
     } catch (error) {
-      this.pino.log({
-        level: LogLevel.ERROR,
-        method: "getBanned",
-        error: error
-      });
+      if (error instanceof Error) {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getBanned",
+          error: error
+        })
+      } else {
+        this.pino.log({
+          level: LogLevel.ERROR,
+          method: "LogData.getBanned",
+          message: "Error with getBanned"
+        });
+      }
       return [];
     }
   };

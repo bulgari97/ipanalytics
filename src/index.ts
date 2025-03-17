@@ -1,5 +1,5 @@
 import Fastify, { FastifyRequest, FastifyReply } from "fastify";
-import IPLogger from "./lib/IPLogger";
+import IPLogger from "./lib/logger/ip-logger";
 
 // Example 
 
