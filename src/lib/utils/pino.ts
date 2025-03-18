@@ -52,10 +52,10 @@ class PinoLogger {
 
   private rotateLogFile() {
     if (existsSync(this.logFilePath)) {
-      unlinkSync(this.logFilePath); // Удаляем старый лог-файл
+      unlinkSync(this.logFilePath); 
     }
-    this.pino = this.createLogger(); // Создаем новый логгер с новым файлом
-    this.logCount = 0; // Сбрасываем счетчик
+    this.pino = this.createLogger(); 
+    this.logCount = 0; 
   }
 }
 

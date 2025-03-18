@@ -1,4 +1,4 @@
-import Server from "../lib/api/server";
+import Server from "../lib/api/server/server";
 import Api from "./api/api";
 import Log from "./api/log";
 
