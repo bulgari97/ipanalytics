@@ -1,0 +1,14 @@
+{
+  "ALLOWED_IPS": ["127.0.0.1", "localhost"],
+  "DEFAULT_SERVER_PORT": 7649,
+  "TTL_BAN": 604800,
+  "TTL_LOG": 86400,
+  "LOG_FILE_PATH": "logs/app.log",
+  "DEFAULT_HOST": "localhost",
+  "DEFAULT_PORT": 6379,
+  "DEBUG_MODE": true,
+  "BANNED_PAGE_LOCATION": "../web/pages/banned-page.html",
+  "MAX_RECONNECT_ATTEMPTS": 5,
+  "RECONNECT_DELAY_MS": 3000,
+  "USE_TRUST_PROXY": false
+}

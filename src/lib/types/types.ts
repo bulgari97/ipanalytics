@@ -9,3 +9,9 @@ enum LogLevel {
   WARN = "warn",
   ERROR = "error",
 };
+
+type Config = {
+  port?: number;
+  host?: string;
+  password?: string;
+};

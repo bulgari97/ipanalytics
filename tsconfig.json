@@ -10,6 +10,8 @@
     "outDir": "./dist",
     "rootDir": "src",
     "module": "CommonJS",
+    "removeComments": false,
+    "resolveJsonModule": true,
   },
-  "include": ["src", "src/web", "src/index.ts", "src/lib/types/lib.types.ts", "src/lib/utils"]
+  "include": ["src", "src/web", "src/index.ts", "src/lib/types/types.ts", "src/lib/utils"]
 }

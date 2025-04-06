@@ -1,37 +1,48 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import Joi from "joi";
-import LogData from "../log-data";
-import BanService from "../../ban/ban-service";
+import LogData from "../services/log-data.service";
+import BanService from "../services/ban.service";
+import config from '../config/config.json';
+import { getClientIP } from "../index";
 
+/**
+ * Registers API routes and request hooks.
+ */
 class Routes {
   private logData: LogData;
   private banService: BanService;
-  private static readonly ALLOWED_IPS: string[] = ["127.0.0.1", "localhost"];
 
+  /**
+   * Initializes routes on Fastify instance.
+   * @param fastify - Fastify app instance.
+   */
   constructor(fastify: FastifyInstance) {
     this.logData = new LogData();
     this.banService = BanService.getInstance();
     this.setupRoutes(fastify);
   }
 
+  /** Defines all routes and request hooks. */
   private setupRoutes(fastify: FastifyInstance): void {
     fastify.addHook("onRequest", async (req: FastifyRequest, res: FastifyReply): Promise<void> => {
-      const clientIP: string = req.ip === "::1" ? "127.0.0.1" : req.ip;
+      const ip: string = getClientIP(req);
+      const clientIP: string = ip === "::1" ? "127.0.0.1" : ip;
 
-      const schema: Joi.StringSchema = Joi.string().ip().required();
-      const { error }: Joi.ValidationResult<string> = schema.validate(clientIP);
+      const schema = Joi.string().ip().required();
+      const { error } = schema.validate(clientIP);
 
       if (error) {
         res.status(400).send({ error: "Invalid IP address" });
         return;
       }
 
-      if (!Routes.ALLOWED_IPS.includes(clientIP)) {
+      if (!config.ALLOWED_IPS.includes(clientIP)) {
         res.status(403).send({ error: "Forbidden" });
         return;
       }
     });
 
+    // Get data
     fastify.get("/getUAs", async (req: FastifyRequest<{ Querystring: { key: keyUAs; start: number; stop: number } }>, res: FastifyReply) => {
       const { key, start, stop } = req.query;
       const uas = await this.logData.getUAs(key, start, stop);
@@ -50,6 +61,8 @@ class Routes {
       return res.send(bannedArr);
     });
 
+
+    // Manage bans
     fastify.post("/banIP", async (req: FastifyRequest<{ Body: { ip: string } }>, res: FastifyReply) => {
       const { ip } = req.body;
       if (!ip) return res.status(400).send({ error: "IP is required" });

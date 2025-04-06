@@ -1,11 +1,24 @@
-import BanService from "../ban/ban-service";
 import Redis from "../utils/redis";
+import config from "../config/config.json";
 
+/**
+ * LogService is a singleton class responsible for logging visits using Redis.
+ */
 class LogService extends Redis {
-  private static ttlLOG: number = 86400;
+  private static TTL_LOG: number = config.TTL_LOG;
   private static isConfigured: boolean = false;
   private static instance: LogService;
 
+  /**
+   * Returns a singleton instance of LogService.
+   * TTL can be optionally configured during the first call.
+   *
+   * @param {number} [ttlLOG] - Optional custom TTL for log entries (only applied once).
+   * @returns {LogService} The singleton instance of LogService.
+   *
+   * @example
+   * const logger = LogService.getInstance(3600);
+   */
   static getInstance(ttlLOG?: number): LogService {
     // Instance of redis logger
     if (!LogService.instance) {
@@ -14,23 +27,16 @@ class LogService extends Redis {
     return LogService.instance;
   }
 
-  /*
-    UNCOMMENT THIS CODE IF YOU WANT TO SEE YOUR TTLLOG ON THE CLIENT
-    static getTtlLog(): number {
-      return LogService.ttlLOG;
-    }
-  */
-
   private constructor(ttlLOG?: number) {
     super();
     if (LogService.isConfigured) {
       this.pino.log({
         level: LogLevel.ERROR,
         method: "LogService",
-        message: "ttlLOG has already been configured and cannot be changed."
-      })
+        message: "ttlLOG has already been configured and cannot be changed.",
+      });
     }
-    LogService.ttlLOG = ttlLOG ?? LogService.ttlLOG;
+    LogService.TTL_LOG = ttlLOG ?? LogService.TTL_LOG;
     LogService.isConfigured = true;
   }
 
@@ -41,10 +47,10 @@ class LogService extends Redis {
 
       // create ip
       multi.hSet(`ip:${ip}`, { userAgent, lastVisit });
-      multi.expire(`ip:${ip}`, LogService.ttlLOG);
+      multi.expire(`ip:${ip}`, LogService.TTL_LOG);
 
       multi.sAdd(`urls:${ip}`, url);
-      multi.expire(`urls:${ip}`, LogService.ttlLOG);
+      multi.expire(`urls:${ip}`, LogService.TTL_LOG);
 
       // this need for sort in LogData
       multi.zAdd("ips_by_time", { score: lastVisit, value: ip }); // sort by visits
@@ -52,10 +58,10 @@ class LogService extends Redis {
 
       // if this is new client userAgent or new ip - create
       multi.sAdd("UserAgents", userAgent);
-      multi.expire("UserAgents", LogService.ttlLOG);
+      multi.expire("UserAgents", LogService.TTL_LOG);
 
       multi.sAdd(`UserAgent:${userAgent}`, ip);
-      multi.expire(`UserAgent:${userAgent}`, LogService.ttlLOG);
+      multi.expire(`UserAgent:${userAgent}`, LogService.TTL_LOG);
 
       // this need for sort in LogData
       multi.zAdd("uas_by_time", { score: lastVisit, value: userAgent }); // sort by visits
@@ -71,19 +77,12 @@ class LogService extends Redis {
         });
       }
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.pino.log({
-          level: LogLevel.ERROR,
-          method: "LogService.logVisit",
-          error: error
-        })
-      } else {
-        this.pino.log({
-          level: LogLevel.ERROR,
-          method: "LogService.logVisit",
-          message: "Error with logging visit"
-        });
-      }
+      this.pino.log({
+        level: LogLevel.ERROR,
+        method: "LogService.logVisit",
+        message: "Error with logging visit",
+        error,
+      });
     }
   }
 }

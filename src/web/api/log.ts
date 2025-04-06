@@ -2,8 +2,8 @@ import Api from "./api";
 
 class Log extends Api {
     
-    private async fetchData<T>(endpoint: string, key: string, timeout = 5000): Promise<T[]> {
-        const controller = new AbortController();
+    private async fetchData<T>(endpoint: string, key: string, timeout: number = 5000): Promise<T[]> {
+        const controller: AbortController = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
 
         try {

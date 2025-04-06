@@ -1,17 +1,24 @@
 import pino from "pino";
-import { mkdirSync, unlinkSync, existsSync } from "fs";
+
+type LogConfig = {
+  level?: LogLevel;
+  method?: string;
+  message?: string;
+  error?: unknown;
+};
 
 class PinoLogger {
   private static instance: PinoLogger;
   private pino;
-  private logCount: number = 0;
-  private logFilePath: string = "logs/app.log";
+  
+  static getInstance(): PinoLogger {
+    if (!PinoLogger.instance) {
+      PinoLogger.instance = new PinoLogger();
+    }
+    return PinoLogger.instance;
+  }
 
   private constructor() {
-    /* 
-      COMMENT THE LINE BELOW TO OUTPUT TO CONSOLE
-    */
-    mkdirSync("logs", { recursive: true });
     this.pino = this.createLogger();
   }
 
@@ -24,38 +31,26 @@ class PinoLogger {
         base: { pid: process.pid },
         timestamp: () => `,"time":"${new Date().toISOString()}"`,
       },
-      /* 
-        COMMENT THE LINE BELOW TO OUTPUT TO CONSOLE
-      */
-      pino.destination(this.logFilePath)
     );
   }
 
-  static getInstance(): PinoLogger {
-    if (!PinoLogger.instance) {
-      PinoLogger.instance = new PinoLogger();
-    }
-    return PinoLogger.instance;
-  }
-
-  log(config: { level?: LogLevel; method?: string; message?: string; error?: unknown }) {
+  /**
+   * 
+   * @example
+   * const logger = PinoLogger.getInstance();
+   * 
+   * logger.log({
+      level: LogLevel.ERROR,
+      method: "Redis",
+      message: "Error with connect to Redis",
+      error,
+    });
+ */
+  log(config: LogConfig) {
     const { level = LogLevel.INFO, method = "", message = "", error } = config;
     const errorDetails = error instanceof Error ? { error: error.message, stack: error.stack } : { error };
 
     this.pino[level](`IPAnalytics - ${method} | ${message}`, error ? errorDetails : undefined);
-
-    this.logCount++;
-    if (this.logCount >= 100) {
-      this.rotateLogFile();
-    }
-  }
-
-  private rotateLogFile() {
-    if (existsSync(this.logFilePath)) {
-      unlinkSync(this.logFilePath); 
-    }
-    this.pino = this.createLogger(); 
-    this.logCount = 0; 
   }
 }
 
